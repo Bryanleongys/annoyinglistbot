@@ -12,13 +12,12 @@ URI = 'mysql://' + sqlID + ':' + sqlPASSWORD + '@localhost/todolist'
 engine = create_engine(URI, echo = True)
 Base = declarative_base()
 
-# class Tasks (Base):
-#     __tablename__ = "Tasks"
+task_id = 0
 
 class User(Base):
-    __tablename__ = 'Characters'
-    id = Column(Integer, primary_key = True)
-    username = Column(Integer, primary_key=True)
+    __tablename__ = 'Losers'
+    task_id = Column(Integer, primary_key = True)
+    username = Column(Integer)
     date = Column(String)
     time = Column(String)
     event_name = Column(String)
@@ -33,16 +32,14 @@ session = Session()
 def main_options_keyboard():
     keyboard = [
         [InlineKeyboardButton("Add Task", callback_data='add_task')],
-        [InlineKeyboardButton("Delete Task", callback_data='delete_task')],
-        [InlineKeyboardButton("Edit Prompt Time", callback_data='edit_time')]
+        [InlineKeyboardButton("Delete Task", callback_data='delete_task')]
     ]
     return InlineKeyboardMarkup(keyboard)
 
 # /start function
-SHOW_KEYBOARD, PROMPT_DATE, PROMPT_TIME, END_ADD_TASK = range(4)
+SHOW_KEYBOARD, PROMPT_DATE, PROMPT_TIME, END_ADD_TASK, END_DELETE_TASK, RETURN_INITIAL= range(6)
 def start(update, context):
     chat_id=update.message.chat.id
-
     global username
     username=update.message.from_user.username
 
@@ -124,6 +121,8 @@ def prompt_time(update, context):
 def end_add_task(update, context):
     chat_id=update.message.chat.id
     user_input=update.message.text.replace(" ", "")
+    global username
+    username = update.message.from_user.username
     
     if not (user_input.isdigit() and len(user_input) == 4):
         context.bot.edit_message_text(
@@ -133,10 +132,12 @@ def end_add_task(update, context):
 
         return END_ADD_TASK
 
-    global user_time
     user_time = user_input
 
-    user = User(username = username, date = user_date, time = user_time, event_name = user_event_name)
+    global task_id
+    task_id = task_id + 1
+
+    user = User(task_id = task_id, username = username, date = user_date, time = user_time, event_name = user_event_name)
     session.add(user)
     session.commit()
  
@@ -145,16 +146,16 @@ def end_add_task(update, context):
         text="Your event has been added."
     )
 
-    text="What are you waiting for? Complete these tasks! \n"
+    text="What are you waiting for? Complete these tasks! \n\n"
 
     user = session.query(User).get(username)
     connection = MySQLdb.connect (host = "localhost", user = "root", passwd = "Biryani158*", db = "todolist")
     cursor = connection.cursor()
-    cursor.execute('SELECT * FROM Characters;')
+    cursor.execute('SELECT * FROM Losers;')
     data = cursor.fetchall()
     for row in data:
-        if (username == row[0]):
-            text += "Date: " + row[1] + " Time: " + row[2] + " Task: " + row[3] + "\n"
+        if (username == row[1]):
+            text += "Task No: " + str(row[0]) + "  Date: " + row[2] + "  Time: " + row[3] + "  Task: " + row[4] + "\n\n"
 
     context.bot.send_message(
         chat_id=chat_id,
@@ -166,12 +167,97 @@ def end_add_task(update, context):
 
 # Delete Task function
 def prompt_task_id(update, context):
+    query=update.callback_query
+
+    text = ""
+    connection = MySQLdb.connect (host = "localhost", user = "root", passwd = "Biryani158*", db = "todolist")
+    cursor = connection.cursor()
+    cursor.execute('SELECT * FROM Losers;')
+    data = cursor.fetchall()
+    for row in data:
+        if (username == row[1]):
+            text += "Task No: " + str(row[0]) + "  Date: " + row[2] + "  Time: " + row[3] + "  Task: " + row[4] + "\n\n"
+
+    text += "Enter the task number you want to delete lazy ass."
+
+    context.bot.edit_message_text(
+        chat_id=query.message.chat_id,
+        message_id=query.message.message_id,
+        text=text
+    )
+
+    return END_DELETE_TASK
+
+def end_delete_task(update, context):
     chat_id=update.message.chat.id
+    username=update.message.from_user.username
+    user_input=update.message.text
+
+    connection = MySQLdb.connect (host = "localhost", user = "root", passwd = "Biryani158*", db = "todolist")
+    cursor = connection.cursor()
+    cursor.execute('SELECT * FROM Losers;')
+    data = cursor.fetchall()
+    for row in data:
+        if (str(row[0]) == user_input):
+            if (username != str(row[1])):
+                context.bot.send_message(
+                    chat_id=chat_id,
+                    text='What are you doing dummy? Delete your own tasks!'
+                )
+                return_initial(update, context)
+                return
+
+            else:
+                # cursor.execute('DELETE FROM Losers WHERE task_id=' + user_input + '&& username=' + username +';')
+                x = session.query(User).get(row[0])
+                session.delete(x)
+                session.commit()
+                context.bot.send_message(
+                    chat_id=chat_id,
+                    text='Task no ' + user_input + ' has been deleted.'
+                )
+
+                text="What are you waiting for? Complete these tasks! \n\n"
+                connection = MySQLdb.connect (host = "localhost", user = "root", passwd = "Biryani158*", db = "todolist")
+                cursor = connection.cursor()
+                cursor.execute('SELECT * FROM Losers;')
+                data = cursor.fetchall()
+                for row in data:
+                    if (username == row[1]):
+                        text += "Task No: " + str(row[0]) + "  Date: " + row[2] + "  Time: " + row[3] + "  Task: " + row[4] + "\n\n"
+
+                context.bot.send_message(
+                    chat_id=chat_id,
+                    text=text,
+                    reply_markup=main_options_keyboard()
+                )
+                return ConversationHandler.END
 
     context.bot.send_message(
         chat_id=chat_id,
-        text="May I know which "
+        text='What are you doing dummy? Delete your own tasks!'
+        )
+    return_initial(update, context)
+
+def return_initial(update, context):
+    chat_id=update.message.chat.id
+
+    text="What are you waiting for? Complete these tasks! \n\n"
+
+    connection = MySQLdb.connect (host = "localhost", user = "root", passwd = "Biryani158*", db = "todolist")
+    cursor = connection.cursor()
+    cursor.execute('SELECT * FROM Losers;')
+    data = cursor.fetchall()
+    for row in data:
+        if (username == row[1]):
+            text += "Task No: " + str(row[0]) + "  Date: " + row[2] + "  Time: " + row[3] + "  Task: " + row[4] + "\n\n"
+
+    context.bot.send_message(
+        chat_id=chat_id,
+        text=text,
+        reply_markup=main_options_keyboard()
     )
+    return ConversationHandler.END
 
 BOT_TOKEN = "1556459123:AAFwqwpHyZIgBdRF1gicdMVCpHq8Tjd5_cQ"
 def main():
@@ -204,7 +290,17 @@ def main():
         )
     )
 
-    dp.add_handler(CallbackQueryHandler(prompt_task_id, pattern='delete_task'))
+    dp.add_handler(
+        ConversationHandler(
+            entry_points=[CallbackQueryHandler(prompt_task_id, pattern='delete_task')],
+            states={
+                END_DELETE_TASK: [MessageHandler(Filters.text, end_delete_task)],
+                RETURN_INITIAL: [MessageHandler(Filters.text, return_initial)]
+            },
+            fallbacks=[],
+            per_user=False
+        )
+    )
 
     updater.start_polling()
     updater.idle()
