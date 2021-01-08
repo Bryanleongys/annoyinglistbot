@@ -3,6 +3,7 @@ from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, Conve
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, String, create_engine, Float, ForeignKey
 from sqlalchemy.orm import sessionmaker, relationship
+import MySQLdb, sys
 
 # creating database
 sqlID = 'root'
@@ -16,6 +17,7 @@ Base = declarative_base()
 
 class User(Base):
     __tablename__ = 'Characters'
+    id = Column(Integer, primary_key = True)
     username = Column(Integer, primary_key=True)
     date = Column(String)
     time = Column(String)
@@ -146,9 +148,13 @@ def end_add_task(update, context):
     text="What are you waiting for? Complete these tasks! \n"
 
     user = session.query(User).get(username)
-    # input_data = session.query(User).all()
-    # for row in input_data:
-    #     text += row.date + row.time + row.event_name + "\n"
+    connection = MySQLdb.connect (host = "localhost", user = "root", passwd = "Biryani158*", db = "todolist")
+    cursor = connection.cursor()
+    cursor.execute('SELECT * FROM Characters;')
+    data = cursor.fetchall()
+    for row in data:
+        if (username == row[0]):
+            text += "Date: " + row[1] + " Time: " + row[2] + " Task: " + row[3] + "\n"
 
     context.bot.send_message(
         chat_id=chat_id,
