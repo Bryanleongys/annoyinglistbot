@@ -3,18 +3,20 @@ from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, Conve
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, String, create_engine, Float, ForeignKey
 from sqlalchemy.orm import sessionmaker, relationship
-import MySQLdb, sys
 
 # creating database
-sqlID = ''
-sqlPASSWORD = ''
+sqlID = 'root'
+sqlPASSWORD = 'Biryani158*'
 URI = 'mysql://' + sqlID + ':' + sqlPASSWORD + '@localhost/todolist'
 engine = create_engine(URI, echo = True)
 Base = declarative_base()
 
+# class Tasks (Base):
+#     __tablename__ = "Tasks"
+
 class User(Base):
-    __tablename__ = 'User'
-    username = Column(String(100), primary_key=True)
+    __tablename__ = 'Characters'
+    username = Column(Integer, primary_key=True)
     date = Column(String)
     time = Column(String)
     event_name = Column(String)
@@ -38,6 +40,7 @@ def main_options_keyboard():
 SHOW_KEYBOARD, PROMPT_DATE, PROMPT_TIME, END_ADD_TASK = range(4)
 def start(update, context):
     chat_id=update.message.chat.id
+
     global username
     username=update.message.from_user.username
 
@@ -60,15 +63,7 @@ def keyboard_buttons(update, context):
 
         return SHOW_KEYBOARD
 
-    text = "What are you waiting for? Complete these tasks! \n"
-    
-    username = update.message.from_user.username
-    user = session.query(User).get(username)
-
-    input_data = session.query(User).all()
-    for row in input_data:
-        if (row.username == username):
-            text += row.date + row.time + row.event_name + "\n"
+    text = "Use these functions to get your life together :)"
     
     update.message.reply_text(
         text=text,
@@ -127,7 +122,6 @@ def prompt_time(update, context):
 def end_add_task(update, context):
     chat_id=update.message.chat.id
     user_input=update.message.text.replace(" ", "")
-    username=update.message.from_user.username
     
     if not (user_input.isdigit() and len(user_input) == 4):
         context.bot.edit_message_text(
@@ -141,7 +135,6 @@ def end_add_task(update, context):
     user_time = user_input
 
     user = User(username = username, date = user_date, time = user_time, event_name = user_event_name)
-
     session.add(user)
     session.commit()
  
@@ -152,12 +145,10 @@ def end_add_task(update, context):
 
     text="What are you waiting for? Complete these tasks! \n"
 
-    username = update.message.from_user.username
-
-    input_data = session.query(User).all()
-    for row in input_data:
-        if (row.username == username):
-            text += row.date + row.time + row.event_name + "\n"
+    user = session.query(User).get(username)
+    # input_data = session.query(User).all()
+    # for row in input_data:
+    #     text += row.date + row.time + row.event_name + "\n"
 
     context.bot.send_message(
         chat_id=chat_id,
@@ -175,6 +166,7 @@ def prompt_task_id(update, context):
         chat_id=chat_id,
         text="May I know which "
     )
+
 BOT_TOKEN = "1556459123:AAFwqwpHyZIgBdRF1gicdMVCpHq8Tjd5_cQ"
 def main():
     updater = Updater(BOT_TOKEN, use_context=True)
